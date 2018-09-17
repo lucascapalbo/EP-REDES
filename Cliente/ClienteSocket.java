@@ -19,6 +19,8 @@ public class ClienteSocket {
     private static byte[] mybytearray;
     private static String nomeUsuário;
     private static Scanner scan;
+    private static String diretorioDownload;
+
 
     public static void main(String[] args) throws IOException {
         scan = new Scanner(System.in);
@@ -72,7 +74,7 @@ public class ClienteSocket {
                         //System.out.print(progresso(bytesLidos, mybytearray.length) + " ");
                         pb.stepBy(buffer);
                     }
-                    pb.stop();
+                    pb.close();
                 } catch (SocketException e) {
                     System.out.println("Oh oh, conexão caiu.");
                 }
@@ -81,13 +83,22 @@ public class ClienteSocket {
                 dos.close();
                 break;
             case ("download"):
+                diretorioDownload = System.getProperty("user.home");
+                System.out.println("Estes são os arquivos que voce pode baixar:");
                 ObjectOutputStream enviaObjeto = new ObjectOutputStream(out);
                 ObjectInputStream recebeObjeto = new ObjectInputStream(in);
                 ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
                 for (int i = 0; i < nomesArquivos.size(); i++) {
-                    System.out.println(nomesArquivos.get(i));
+                    System.out.print(nomesArquivos.get(i) + " , ");
                 }
-                System.out.println("Estes são os arquivos que voce pode baixar:");
+                System.out.println("Qual destes arquivos deseja baixar?");
+                String arquivoDownload = scan.nextLine();
+                if (validaNomeArquivo(nomesArquivos, arquivoDownload)) {
+                    //Arquivo existe
+                    baixaArquivo(arquivoDownload, enviaObjeto, recebeObjeto);
+                } else {
+                    System.out.println("Por favor, digite um dos arquivos disponíveis: ");
+                }
                 break;
 
 
@@ -96,10 +107,55 @@ public class ClienteSocket {
         sock.close();
     }
 
+    private static void baixaArquivo(String arquivoDownload, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
+        Mensagem mensagem = new Mensagem("download", arquivoDownload); //Pede arquivo para o servidor
+        int tamanhoArquivoDownload = 0;
+        try {
+            enviaObjeto.writeObject(mensagem);
+            enviaObjeto.flush();
+            Mensagem dadosArquivoDownload = (Mensagem) recebeObjeto.readObject();
+            if (dadosArquivoDownload.getCommand().equals("dadosArquivo")) {
+                tamanhoArquivoDownload = (int) dadosArquivoDownload.getArguments().get(1);
+            }
+        } catch (Exception e) {
+            System.out.println("Não foi possível baixar arquivo");
+        }
+        if (verificaExistenciaArquivo(arquivoDownload, diretorioDownload)) { //Verifica se arquivo já existe.
+            System.out.println("Sobrescrevendo-o");
+            //Posso nao sobrescrever.
+        } else {
+            //Lendo e gravando arquivo
+            try {
+                OutputStream output;
+                output = new FileOutputStream(diretorioDownload + "/" + arquivoDownload);
+                byte[] buffer = new byte[tamanhoArquivoDownload / 100];
+                int count = 0;
+                ProgressBar pb = new ProgressBar("Baixando", tamanhoArquivoDownload);
+                while ((count = in.read(buffer)) > 0) {
+                    pb.stepBy(tamanhoArquivoDownload / 100);
+                    output.write(buffer, 0, count);
+                }
+                pb.close();
+                output.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static boolean validaNomeArquivo(ArrayList nomesArquivos, String arquivoDownload) {
+        for (int i = 0; i < nomesArquivos.size(); i++) {
+            if (arquivoDownload.equals(nomesArquivos.get(i)))
+                return true;
+        }
+        return false;
+    }
+
     private static ArrayList<String> recuperaListaArquivos(String nomeUsuário, ObjectOutputStream enviaObjeto, ObjectInputStream recebeLista) {
         Mensagem mensagem = new Mensagem("listaArquivos", nomeUsuário); //Recupera lista de arquivos
         try {
             enviaObjeto.writeObject(mensagem);
+            enviaObjeto.flush();
             Mensagem listaArquivos = (Mensagem) recebeLista.readObject(); //recupera lista do servidor
             if (listaArquivos.getCommand().equals("listaArquivos")) {
                 ArrayList<String> nomesArquivos = (ArrayList) listaArquivos.getArguments();
@@ -116,6 +172,7 @@ public class ClienteSocket {
         Mensagem mensagem = new Mensagem("upload", nomeArquivo, tamanhoArquivo, nomeUsuário);
         try {
             dos.writeObject(mensagem);
+            dos.flush();
         } catch (IOException e) {
             System.out.println("Não foi possível enviar dados do arquivo");
         }
@@ -140,5 +197,15 @@ public class ClienteSocket {
             carregaArquivo(nomeArquivo);
         }
         return nomeExatoArquivo;
+    }
+
+    private static boolean verificaExistenciaArquivo(String nomeArquivo, String nomePasta) {
+        File file = new File(nomePasta + "/" + nomeArquivo); //Concatena arquivo e pasta
+        if (file.exists()) {
+            System.out.println("Arquivo já existe.");
+            file.delete();
+            return true;
+        }
+        return false;
     }
 }

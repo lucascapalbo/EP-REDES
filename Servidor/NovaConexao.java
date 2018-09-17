@@ -23,11 +23,11 @@ public class NovaConexao implements Runnable {
             OutputStream out = clientSocket.getOutputStream();
             ObjectInputStream objetoRecebido = new ObjectInputStream(in);
             ObjectOutputStream enviarObjeto = new ObjectOutputStream(out);
-            TrataMensagem.tratador(readMessage(objetoRecebido), in, enviarObjeto); //Envia Mensagem e socket para tratamento.
-
+            TrataMensagem.tratador(readMessage(objetoRecebido), in, enviarObjeto, out); //Envia Mensagem e socket para tratamento.
             objetoRecebido.close();
             in.close();
             clientSocket.close();
+
         } catch (Exception e) {
             e.printStackTrace();
         }

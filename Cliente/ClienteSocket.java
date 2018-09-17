@@ -3,11 +3,14 @@ package Cliente;
 import comum.Mensagem;
 import comum.progressbar.ProgressBar;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -24,6 +27,8 @@ public class ClienteSocket {
     private static String nomeExatoArquivo = "";
     private static ObjectOutputStream enviaObjeto;
     private static ObjectInputStream recebeObjeto;
+    private static ProgressBar pb;
+    private static String md5ArquivoServidor;
 
     public static void main(String[] args) throws IOException {
         scan = new Scanner(System.in);
@@ -53,19 +58,21 @@ public class ClienteSocket {
             System.out.println("Deseja fazer download ou upload?");
             String opcaoEscolhida = scan.nextLine();
 
-            switch (opcaoEscolhida) {
+            switch (opcaoEscolhida.toLowerCase()) {
                 case ("upload"):
                     System.out.println("Insere o nome do arquivo ai meu bom:");
-                    String nomeArquivo = scan.nextLine();
+
+                    String caminhoArquivo = scan.nextLine();
+                    String nomeArquivo = caminhoArquivo;
 
                     nomeArquivo = carregaArquivo(nomeArquivo);
                     System.out.println("Enviando o arquivo : " + nomeArquivo);
 
                     //Sending file name and file size to the server
-                    enviarDadosArquivo(nomeArquivo, mybytearray.length, nomeUsuário, enviaObjeto); //Envia dados do arquivo ao servidor
+                    enviarDadosArquivo(nomeArquivo, mybytearray.length, nomeUsuário, enviaObjeto, caminhoArquivo); //Envia dados do arquivo ao servidor
                     System.out.println(mybytearray.length);
                     enviaObjeto.flush();
-                    ProgressBar pb = new ProgressBar("Enviando", mybytearray.length);
+                    pb = new ProgressBar("Enviando", mybytearray.length);
                     try {
                         //Sending file data to the server
                         int buffer = mybytearray.length / 100;
@@ -103,7 +110,7 @@ public class ClienteSocket {
                         System.out.println("Por favor, digite um dos arquivos disponíveis: ");
                     }
                     break;
-                case ("Exit"):
+                case ("exit"):
                     exit = true;
                     System.out.println("Fechando conexão.");
                     break;
@@ -125,6 +132,7 @@ public class ClienteSocket {
             Mensagem dadosArquivoDownload = (Mensagem) recebeObjeto.readObject();
             if (dadosArquivoDownload.getCommand().equals("dadosArquivo")) {
                 tamanhoArquivoDownload = (int) dadosArquivoDownload.getArguments().get(1);
+                md5ArquivoServidor = (String) dadosArquivoDownload.getArguments().get(2);
             }
         } catch (Exception e) {
             System.out.println("Não foi possível baixar arquivo");
@@ -140,13 +148,14 @@ public class ClienteSocket {
             byte[] buffer = new byte[tamanhoArquivoDownload];
             int count = 0;
             int controlador = 0;
-            ProgressBar pb = new ProgressBar("Baixando", tamanhoArquivoDownload);
+            pb = new ProgressBar("Baixando", tamanhoArquivoDownload);
             while ((count = in.read(buffer, 0, (tamanhoArquivoDownload - controlador))) > 0) {
                 //Arrumar loop infinito
                 output.write(buffer, 0, count);
                 if (count >= 0) controlador += count;
                 pb.stepBy(count);
             }
+            String md5ArquivoCliente = criaMD5(arquivoDownload);
             pb.close();
             System.out.println();
             output.close();
@@ -184,9 +193,9 @@ public class ClienteSocket {
         return null;
     }
 
-    private static void enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, String nomeUsuário, ObjectOutputStream dos) {
+    private static void enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, String nomeUsuário, ObjectOutputStream dos, String caminhoArquivo) {
         //Escreve mensagem para o upload, contendo o nome do arquivo, tamanho e usuário para gravar a pasta.
-        Mensagem mensagem = new Mensagem("upload", nomeArquivo, tamanhoArquivo, nomeUsuário);
+        Mensagem mensagem = new Mensagem("upload", nomeArquivo, tamanhoArquivo, nomeUsuário, criaMD5(caminhoArquivo));
         try {
             dos.writeObject(mensagem);
             dos.flush();
@@ -224,5 +233,18 @@ public class ClienteSocket {
             return true;
         }
         return false;
+    }
+
+    private static String criaMD5(String nomeArquivo) {
+        String md5Criada = "";
+        try {
+            byte[] b = Files.readAllBytes(Paths.get(nomeArquivo));
+            byte[] hash = MessageDigest.getInstance("MD5").digest(b);
+            md5Criada = DatatypeConverter.printHexBinary(hash);
+            return md5Criada;
+        } catch (Exception e) {
+            System.out.println("Não foi possível criar MD5 do arquivo.");
+            return md5Criada; //Retorna nada
+        }
     }
 }

@@ -2,12 +2,18 @@ package Servidor;
 
 import comum.Mensagem;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
 
 
 public class TrataMensagem {
     private static byte[] mybytearray;
     private static String nomeUsuario = "";
+    private static String md5ArquivoCliente;
+    private static String md5ArquivoServidor;
 
     static void tratador(Mensagem message, InputStream in, ObjectOutputStream enviaParaSocket, OutputStream out) {
         switch (message.getCommand()) {
@@ -16,6 +22,7 @@ public class TrataMensagem {
                 String nomeArquivo = (String) message.getArguments().get(0); //Recupera nome do arquivo.
                 int tamanhoArquivo = (int) message.getArguments().get(1); //Define tamanho do Arquivo.
                 nomeUsuario = (String) message.getArguments().get(2); //Recupera nome para pasta.
+                md5ArquivoCliente = (String) message.getArguments().get(3); //Recupera md5 Arquivo para comparar.
                 verificaExistenciaPasta(nomeUsuario);
                 verificaExistenciaArquivo(nomeArquivo, nomeUsuario);
                 System.out.println("Vo tenta faze com esse bosta: " + nomeArquivo);
@@ -28,6 +35,14 @@ public class TrataMensagem {
                         output.write(buffer, 0, count);
                         if (count >= 0) controlador += count;
                         if (controlador >= tamanhoArquivo) break;
+                    }
+                    md5ArquivoServidor = criaMD5((nomeUsuario + "/" + nomeArquivo));
+                    System.out.println("MD5 CLIENTE" + md5ArquivoCliente);
+                    System.out.println("MD5 SERVER" + md5ArquivoServidor);
+                    System.out.println(verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor));
+                    if (!verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor)) {
+                        verificaExistenciaArquivo(nomeArquivo, nomeUsuario); //Exclui arquivo ruim
+                        avisaClienteArquivoRuim(nomeArquivo, enviaParaSocket); //FAZER
                     }
                     output.flush();
                     output.close();
@@ -56,6 +71,15 @@ public class TrataMensagem {
                 }
                 break;
         }
+    }
+
+    private static void avisaClienteArquivoRuim(String nomeArquivo, ObjectOutputStream enviaParaSocket) {
+    }
+
+    private static boolean verificaIntegridadeArquivo(String md5ArquivoCliente, String md5ArquivoServidor) {
+        if (md5ArquivoCliente.toUpperCase().equals(md5ArquivoServidor.toUpperCase()))
+            return true;
+        return false;
     }
 
 
@@ -112,12 +136,26 @@ public class TrataMensagem {
 
     private static void enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, ObjectOutputStream dos) {
         //Escreve mensagem para o upload, contendo o nome do arquivo, tamanho e usuário para gravar a pasta.
-        Mensagem mensagem = new Mensagem("dadosArquivo", nomeArquivo, tamanhoArquivo);
+        Mensagem mensagem = new Mensagem("dadosArquivo", nomeArquivo, tamanhoArquivo, criaMD5((nomeUsuario + "/" + nomeArquivo)));
         try {
             dos.writeObject(mensagem);
             dos.flush();
         } catch (IOException e) {
             System.out.println("Não foi possível enviar dados do arquivo");
+        }
+    }
+
+    private static String criaMD5(String nomeArquivo) {
+        String md5Criada = "";
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(Files.readAllBytes(Paths.get(nomeArquivo)));
+            byte[] digest = md.digest();
+            md5Criada = DatatypeConverter.printHexBinary(digest);
+            return md5Criada;
+        } catch (Exception e) {
+            System.out.println("Não foi possível criar MD5 do arquivo.");
+            return md5Criada; //Retorna nada
         }
     }
 }

@@ -155,7 +155,8 @@ public class ClienteSocket {
                 if (count >= 0) controlador += count;
                 pb.stepBy(count);
             }
-            String md5ArquivoCliente = criaMD5(arquivoDownload);
+            String md5ArquivoCliente = criaMD5(diretorioDownload + "/" + arquivoDownload);
+            verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor);
             pb.close();
             System.out.println();
             output.close();
@@ -167,6 +168,12 @@ public class ClienteSocket {
             e.printStackTrace();
         }
 
+    }
+
+    private static boolean verificaIntegridadeArquivo(String md5ArquivoCliente, String md5ArquivoServidor) {
+        if (md5ArquivoCliente.toUpperCase().equals(md5ArquivoServidor.toUpperCase()))
+            return true;
+        return false;
     }
 
     private static boolean validaNomeArquivo(ArrayList nomesArquivos, String arquivoDownload) {

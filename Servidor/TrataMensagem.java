@@ -2,15 +2,12 @@ package Servidor;
 
 import comum.Mensagem;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 
 
 public class TrataMensagem {
 
-    static void tratador(Mensagem message, InputStream in, OutputStream out) {
+    static void tratador(Mensagem message, InputStream in, ObjectOutputStream enviaParaSocket) {
         switch (message.getCommand()) {
             case ("upload"):
                 OutputStream output;
@@ -34,7 +31,31 @@ public class TrataMensagem {
                 // Closing the FileOutputStream handle
                 System.out.println("recebi o arquivo: " + nomeArquivo + "de tamanho: " + tamanhoArquivo);
                 break;
+            case ("listaArquivos"):
+                String nomeUsuario = (String) message.getArguments().get(0);
+                String[] nomesArquivo = recuperaListaArquivos(nomeUsuario);
+                enviarListaArquivos(nomesArquivo, enviaParaSocket);
+                break;
         }
+    }
+
+    private static void enviarListaArquivos(String[] nomesArquivo, ObjectOutputStream enviarParaSocket) {
+        Mensagem mensagem = new Mensagem("listaArquivos", nomesArquivo);
+        try {
+            enviarParaSocket.writeObject(mensagem);
+        } catch (IOException e) {
+            System.out.println("Não foi possível enviar dados do arquivo");
+        }
+    }
+
+    private static String[] recuperaListaArquivos(String nomeUsuario) {
+        File diretorio = new File(nomeUsuario);
+        File files[] = diretorio.listFiles();
+        String[] nomesArquivo = new String[files.length];
+        for (int i = 0; i < files.length; i++) {
+            nomesArquivo[i] = files[i].getName();
+        }
+        return nomesArquivo;
     }
 
     private static void verificaExistenciaArquivo(String nomeArquivo, String nomePasta) {

@@ -4,6 +4,7 @@ import comum.Mensagem;
 
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
@@ -21,8 +22,8 @@ public class NovaConexao implements Runnable {
             InputStream in = clientSocket.getInputStream(); //Cria conexao do cliente
             OutputStream out = clientSocket.getOutputStream();
             ObjectInputStream objetoRecebido = new ObjectInputStream(in);
-
-            TrataMensagem.tratador(readMessage(objetoRecebido), in, out); //Envia Mensagem e socket para tratamento.
+            ObjectOutputStream enviarObjeto = new ObjectOutputStream(out);
+            TrataMensagem.tratador(readMessage(objetoRecebido), in, enviarObjeto); //Envia Mensagem e socket para tratamento.
 
             objetoRecebido.close();
             in.close();

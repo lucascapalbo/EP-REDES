@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 
@@ -26,7 +27,9 @@ public class ClienteSocket {
 
         try {
             System.out.println("Tentando criar conexão ao servidor.");
-            sock = new Socket("localhost", 13267);
+            String ip = "localhost";
+            int porta = 13267;
+            sock = new Socket(ip, porta);
             System.out.println("Conexão criada!");
 
             out = sock.getOutputStream(); //cria conexão de envio
@@ -77,14 +80,35 @@ public class ClienteSocket {
                 out.close();
                 dos.close();
                 break;
-        }
+            case ("download"):
+                ObjectOutputStream enviaObjeto = new ObjectOutputStream(out);
+                ObjectInputStream recebeObjeto = new ObjectInputStream(in);
+                ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
+                for (int i = 0; i < nomesArquivos.size(); i++) {
+                    System.out.println(nomesArquivos.get(i));
+                }
+                System.out.println("Estes são os arquivos que voce pode baixar:");
+                break;
 
+
+        }
         //Closing socket
         sock.close();
     }
 
-    private static int progresso(int bytesLidos, int tamanhoArquivo) {
-        return (int) (((float) bytesLidos / (float) tamanhoArquivo) * 100);
+    private static ArrayList<String> recuperaListaArquivos(String nomeUsuário, ObjectOutputStream enviaObjeto, ObjectInputStream recebeLista) {
+        Mensagem mensagem = new Mensagem("listaArquivos", nomeUsuário); //Recupera lista de arquivos
+        try {
+            enviaObjeto.writeObject(mensagem);
+            Mensagem listaArquivos = (Mensagem) recebeLista.readObject(); //recupera lista do servidor
+            if (listaArquivos.getCommand().equals("listaArquivos")) {
+                ArrayList<String> nomesArquivos = (ArrayList) listaArquivos.getArguments();
+                return nomesArquivos;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private static void enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, String nomeUsuário, ObjectOutputStream dos) {

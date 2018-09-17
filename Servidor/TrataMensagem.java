@@ -23,8 +23,11 @@ public class TrataMensagem {
                     output = new FileOutputStream(nomeUsuario + "/" + nomeArquivo);
                     byte[] buffer = new byte[8192];
                     int count = 0;
-                    while ((count = in.read(buffer)) > 0 && count <= tamanhoArquivo) {
+                    int controlador = 0;
+                    while ((count = in.read(buffer)) > 0) {
                         output.write(buffer, 0, count);
+                        if (count >= 0) controlador += count;
+                        if (controlador >= tamanhoArquivo) break;
                     }
                     output.flush();
                     output.close();

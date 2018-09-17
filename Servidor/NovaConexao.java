@@ -23,10 +23,9 @@ public class NovaConexao implements Runnable {
             OutputStream out = clientSocket.getOutputStream();
             ObjectInputStream objetoRecebido = new ObjectInputStream(in);
             ObjectOutputStream enviarObjeto = new ObjectOutputStream(out);
-            while (true)
+            while (true) {
                 TrataMensagem.tratador(readMessage(objetoRecebido), in, enviarObjeto, out); //Envia Mensagem e socket para tratamento.
-
-
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -46,4 +45,3 @@ public class NovaConexao implements Runnable {
         }
     }
 }
-

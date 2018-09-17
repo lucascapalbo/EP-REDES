@@ -20,7 +20,10 @@ public class ClienteSocket {
     private static String nomeUsuário;
     private static Scanner scan;
     private static String diretorioDownload;
-
+    private static boolean exit = false;
+    private static String nomeExatoArquivo = "";
+    private static ObjectOutputStream enviaObjeto;
+    private static ObjectInputStream recebeObjeto;
 
     public static void main(String[] args) throws IOException {
         scan = new Scanner(System.in);
@@ -37,71 +40,77 @@ public class ClienteSocket {
             out = sock.getOutputStream(); //cria conexão de envio
             in = sock.getInputStream(); //cria conexão de recebimento;
 
+            enviaObjeto = new ObjectOutputStream(out);
+            recebeObjeto = new ObjectInputStream(in);
+
 
         } catch (SocketException e) {
             System.out.println("Oh oh, parece que o server não ta on não.");
             return;
         }
 
+        while (!exit) {
+            System.out.println("Deseja fazer download ou upload?");
+            String opcaoEscolhida = scan.nextLine();
 
-        System.out.println("Deseja fazer download ou upload?");
-        String opcaoEscolhida = scan.nextLine();
+            switch (opcaoEscolhida) {
+                case ("upload"):
+                    System.out.println("Insere o nome do arquivo ai meu bom:");
+                    String nomeArquivo = scan.nextLine();
 
-        switch (opcaoEscolhida) {
-            case ("upload"):
-                System.out.println("Insere o nome do arquivo ai meu bom:");
-                String nomeArquivo = scan.nextLine();
+                    nomeArquivo = carregaArquivo(nomeArquivo);
+                    System.out.println("Enviando o arquivo : " + nomeArquivo);
 
-                nomeArquivo = carregaArquivo(nomeArquivo);
-                System.out.println("Enviando o arquivo : " + nomeArquivo);
-
-                //Sending file name and file size to the server
-                ObjectOutputStream dos = new ObjectOutputStream(out);
-                enviarDadosArquivo(nomeArquivo, mybytearray.length, nomeUsuário, dos); //Envia dados do arquivo ao servidor
-                System.out.println(mybytearray.length);
-                dos.flush();
-                ProgressBar pb = new ProgressBar("Enviando", mybytearray.length);
-                try {
-                    //Sending file data to the server
-                    int buffer = mybytearray.length / 100;
-                    int bytesLidos = 0;
-                    while (bytesLidos < mybytearray.length) {
-                        if (bytesLidos + buffer > mybytearray.length) {
-                            buffer = mybytearray.length - bytesLidos;
+                    //Sending file name and file size to the server
+                    enviarDadosArquivo(nomeArquivo, mybytearray.length, nomeUsuário, enviaObjeto); //Envia dados do arquivo ao servidor
+                    System.out.println(mybytearray.length);
+                    enviaObjeto.flush();
+                    ProgressBar pb = new ProgressBar("Enviando", mybytearray.length);
+                    try {
+                        //Sending file data to the server
+                        int buffer = mybytearray.length / 100;
+                        int bytesLidos = 0;
+                        while (bytesLidos < mybytearray.length) {
+                            if (bytesLidos + buffer > mybytearray.length) {
+                                buffer = mybytearray.length - bytesLidos;
+                            }
+                            out.write(mybytearray, bytesLidos, buffer);
+                            bytesLidos += buffer;
+                            //System.out.print(progresso(bytesLidos, mybytearray.length) + " ");
+                            pb.stepBy(buffer);
                         }
-                        out.write(mybytearray, bytesLidos, buffer);
-                        bytesLidos += buffer;
-                        //System.out.print(progresso(bytesLidos, mybytearray.length) + " ");
-                        pb.stepBy(buffer);
+                        pb.close();
+                    } catch (SocketException e) {
+                        System.out.println("Oh oh, conexão caiu.");
                     }
-                    pb.stop();
-                } catch (SocketException e) {
-                    System.out.println("Oh oh, conexão caiu.");
-                }
-                out.flush();
-                out.close();
-                dos.close();
-                break;
-            case ("download"):
-                diretorioDownload = System.getProperty("user.home");
-                System.out.println("Estes são os arquivos que voce pode baixar:");
-                ObjectOutputStream enviaObjeto = new ObjectOutputStream(out);
-                ObjectInputStream recebeObjeto = new ObjectInputStream(in);
-                ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
-                for (int i = 0; i < nomesArquivos.size(); i++) {
-                    System.out.print(nomesArquivos.get(i) + " , ");
-                }
-                System.out.println("Qual destes arquivos deseja baixar?");
-                String arquivoDownload = scan.nextLine();
-                if (validaNomeArquivo(nomesArquivos, arquivoDownload)) {
-                    //Arquivo existe
-                    baixaArquivo(arquivoDownload, enviaObjeto, recebeObjeto);
-                } else {
-                    System.out.println("Por favor, digite um dos arquivos disponíveis: ");
-                }
-                break;
+                    out.flush();
+                    enviaObjeto.flush();
+                    break;
+                case ("download"):
+                    diretorioDownload = System.getProperty("user.home");
+                    System.out.println("Estes são os arquivos que voce pode baixar:");
 
+                    ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
+                    for (int i = 0; i < nomesArquivos.size(); i++) {
+                        System.out.print(nomesArquivos.get(i) + " , ");
+                    }
+                    System.out.println("Qual destes arquivos deseja baixar?");
+                    String arquivoDownload = scan.nextLine();
+                    if (validaNomeArquivo(nomesArquivos, arquivoDownload)) {
+                        //Arquivo existe
+                        baixaArquivo(arquivoDownload, enviaObjeto, recebeObjeto);
+                    } else {
+                        System.out.println("Por favor, digite um dos arquivos disponíveis: ");
+                    }
+                    break;
+                case ("Exit"):
+                    exit = true;
+                    System.out.println("Fechando conexão.");
+                    break;
+                default:
+                    System.out.println("Por favor, entre um comando válido.");
 
+            }
         }
         //Closing socket
         sock.close();
@@ -128,19 +137,24 @@ public class ClienteSocket {
         try {
             OutputStream output;
             output = new FileOutputStream(diretorioDownload + "/" + arquivoDownload);
-            byte[] buffer = new byte[tamanhoArquivoDownload / 100];
+            byte[] buffer = new byte[tamanhoArquivoDownload];
             int count = 0;
             int controlador = 0;
             ProgressBar pb = new ProgressBar("Baixando", tamanhoArquivoDownload);
-            while ((count = in.read(buffer)) > 0) {
+            while ((count = in.read(buffer, 0, (tamanhoArquivoDownload - controlador))) > 0) {
                 //Arrumar loop infinito
                 output.write(buffer, 0, count);
-                pb.stepBy(tamanhoArquivoDownload / 100);
+                if (count >= 0) controlador += count;
+                pb.stepBy(count);
             }
             pb.close();
+            System.out.println();
             output.close();
             return;
-        } catch (Exception e) {
+        } catch (
+                Exception e)
+
+        {
             e.printStackTrace();
         }
 
@@ -182,7 +196,7 @@ public class ClienteSocket {
     }
 
     private static String carregaArquivo(String nomeArquivo) {
-        String nomeExatoArquivo = "";
+        nomeExatoArquivo = "";
         try {
             //Send file
             Path diretorio = Paths.get(nomeArquivo);

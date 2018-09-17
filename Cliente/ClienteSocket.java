@@ -74,7 +74,7 @@ public class ClienteSocket {
                         //System.out.print(progresso(bytesLidos, mybytearray.length) + " ");
                         pb.stepBy(buffer);
                     }
-                    pb.close();
+                    pb.stop();
                 } catch (SocketException e) {
                     System.out.println("Oh oh, conexão caiu.");
                 }
@@ -108,7 +108,7 @@ public class ClienteSocket {
     }
 
     private static void baixaArquivo(String arquivoDownload, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
-        Mensagem mensagem = new Mensagem("download", arquivoDownload); //Pede arquivo para o servidor
+        Mensagem mensagem = new Mensagem("download", arquivoDownload, nomeUsuário); //Pede arquivo para o servidor
         int tamanhoArquivoDownload = 0;
         try {
             enviaObjeto.writeObject(mensagem);
@@ -123,24 +123,27 @@ public class ClienteSocket {
         if (verificaExistenciaArquivo(arquivoDownload, diretorioDownload)) { //Verifica se arquivo já existe.
             System.out.println("Sobrescrevendo-o");
             //Posso nao sobrescrever.
-        } else {
-            //Lendo e gravando arquivo
-            try {
-                OutputStream output;
-                output = new FileOutputStream(diretorioDownload + "/" + arquivoDownload);
-                byte[] buffer = new byte[tamanhoArquivoDownload / 100];
-                int count = 0;
-                ProgressBar pb = new ProgressBar("Baixando", tamanhoArquivoDownload);
-                while ((count = in.read(buffer)) > 0) {
-                    pb.stepBy(tamanhoArquivoDownload / 100);
-                    output.write(buffer, 0, count);
-                }
-                pb.close();
-                output.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
+        //Lendo e gravando arquivo
+        try {
+            OutputStream output;
+            output = new FileOutputStream(diretorioDownload + "/" + arquivoDownload);
+            byte[] buffer = new byte[tamanhoArquivoDownload / 100];
+            int count = 0;
+            int controlador = 0;
+            ProgressBar pb = new ProgressBar("Baixando", tamanhoArquivoDownload);
+            while ((count = in.read(buffer)) > 0) {
+                //Arrumar loop infinito
+                output.write(buffer, 0, count);
+                pb.stepBy(tamanhoArquivoDownload / 100);
+            }
+            pb.close();
+            output.close();
+            return;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     private static boolean validaNomeArquivo(ArrayList nomesArquivos, String arquivoDownload) {

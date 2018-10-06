@@ -35,23 +35,33 @@ public class ClienteSocket {
         System.out.println("Bem vindo ao nosso EP! Insira seu nome: ");
         nomeUsuário = scan.nextLine();
 
-        try {
-            System.out.println("Tentando criar conexão ao servidor.");
-            String ip = "localhost";
-            int porta = 13267;
-            sock = new Socket(ip, porta);
-            System.out.println("Conexão criada!");
+        boolean connected = false;
+        int count = 0;
+        System.out.println("Tentando criar conexão ao servidor.");
+        while (!connected) {
+            try {
+                String ip = "localhost";
+//            String ip = "52.207.182.18";
+                int porta = 13267;
+//            int porta = 44572;
+                sock = new Socket(ip, porta);
+                System.out.println("Conexão criada!");
 
-            out = sock.getOutputStream(); //cria conexão de envio
-            in = sock.getInputStream(); //cria conexão de recebimento;
+                out = sock.getOutputStream(); //cria conexão de envio
+                in = sock.getInputStream(); //cria conexão de recebimento;
 
-            enviaObjeto = new ObjectOutputStream(out);
-            recebeObjeto = new ObjectInputStream(in);
+                enviaObjeto = new ObjectOutputStream(out);
+                recebeObjeto = new ObjectInputStream(in);
 
+                connected = true;
 
-        } catch (SocketException e) {
-            System.out.println("Oh oh, parece que o server não ta on não.");
-            return;
+            } catch (SocketException e) {
+                if (count == 0) {
+                    System.out.println("Ops, o servidor não está online.");
+                    System.out.println("Tentando reconexao");
+                    count++;
+                }
+            }
         }
 
         while (!exit) {
@@ -95,12 +105,14 @@ public class ClienteSocket {
                     break;
                 case ("download"):
                     diretorioDownload = System.getProperty("user.home");
-                    System.out.println("Estes são os arquivos que voce pode baixar:");
+                    System.out.println("Estes são os arquivos que voce colocou no servidor:");
 
                     ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
+                    if (nomesArquivos == null) break;
                     for (int i = 0; i < nomesArquivos.size(); i++) {
                         System.out.print(nomesArquivos.get(i) + " , ");
                     }
+                    //verifica o que ele quer fazer com os arquivos
                     System.out.println("Qual destes arquivos deseja baixar?");
                     String arquivoDownload = scan.nextLine();
                     if (validaNomeArquivo(nomesArquivos, arquivoDownload)) {
@@ -193,6 +205,10 @@ public class ClienteSocket {
             if (listaArquivos.getCommand().equals("listaArquivos")) {
                 ArrayList<String> nomesArquivos = (ArrayList) listaArquivos.getArguments();
                 return nomesArquivos;
+            } else if (listaArquivos.getCommand().equals("erro")) {
+                String mensagemErro = (String) listaArquivos.getArguments().get(0);
+                System.out.println(mensagemErro);
+                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();

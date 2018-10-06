@@ -2,17 +2,13 @@ package Servidor;
 
 import comum.Mensagem;
 
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
 
 public class NovaConexao implements Runnable {
     private Socket clientSocket;
 
     public NovaConexao(Socket socket) {
-        System.out.println("Oi da thread");
         this.clientSocket = socket;
     }
 
@@ -39,6 +35,8 @@ public class NovaConexao implements Runnable {
                 if ((input = (Mensagem) in.readObject()) != null) {
                     return input;
                 }
+        } catch (EOFException e) {
+            throw new RuntimeException("Cliente fechou conexão");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Não foi possível ler objeto.");

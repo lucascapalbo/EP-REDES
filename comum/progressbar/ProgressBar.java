@@ -1,5 +1,8 @@
 package comum.progressbar;
 
+//Toda a classe Progress BAR é um contribuicao do GITHUB.
+//LINK: https://github.com/ctongfei/progressbar/tree/master/src/main/java/me/tongfei/progressbar
+
 import comum.progressbar.wrapped.ProgressBarWrappedInputStream;
 import comum.progressbar.wrapped.ProgressBarWrappedIterable;
 import comum.progressbar.wrapped.ProgressBarWrappedIterator;

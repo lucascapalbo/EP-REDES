@@ -54,7 +54,7 @@ public class TrataMensagem {
                 break;
             case ("listaArquivos"):
                 nomeUsuario = (String) message.getArguments().get(0);
-                String[] nomesArquivo = recuperaListaArquivos(nomeUsuario);
+                String[] nomesArquivo = recuperaListaArquivos(nomeUsuario , enviaParaSocket);
                 enviarListaArquivos(nomesArquivo, enviaParaSocket);
                 System.out.println("Enviei lista arquivos.");
                 break;
@@ -93,14 +93,35 @@ public class TrataMensagem {
         }
     }
 
-    private static String[] recuperaListaArquivos(String nomeUsuario) {
+    private static String[] recuperaListaArquivos(String nomeUsuario , ObjectOutputStream enviaParaSocket) {
         File diretorio = new File(nomeUsuario);
         File files[] = diretorio.listFiles();
-        String[] nomesArquivo = new String[files.length];
+        try{ String[] nomesArquivo = new String[files.length];
         for (int i = 0; i < files.length; i++) {
+            if(files[i].isDirectory()){
+                nomesArquivo[i] = files[i].getName() + "(PASTA)";
+            }
+            else{
             nomesArquivo[i] = files[i].getName();
+            }
         }
         return nomesArquivo;
+        }catch (Exception e){
+            enviaMensagemErro("Não foi possível ler os arquivos. Tem certeza que o usuário foi digitado corretamente?" , enviaParaSocket);
+        }
+        return new String[0];
+    }
+
+
+    private static void enviaMensagemErro(String mensagemErro, ObjectOutputStream enviaParaSocket){
+        //Escreve mensagem para o upload, contendo o nome do arquivo, tamanho e usuário para gravar a pasta.
+        Mensagem mensagem = new Mensagem("erro", mensagemErro);
+        try {
+            enviaParaSocket.writeObject(mensagem);
+            enviaParaSocket.flush();
+        } catch (IOException e) {
+            System.out.println("Não foi possível enviar dados do arquivo");
+        }
     }
 
     private static void verificaExistenciaArquivo(String nomeArquivo, String nomePasta) {

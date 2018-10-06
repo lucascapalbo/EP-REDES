@@ -1,5 +1,8 @@
 package comum;
 
+
+//Esta classe é uma contribuicao do GUILHERME COPPINI
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;

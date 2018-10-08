@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 public class TrataMensagem {
     private static byte[] mybytearray;
     private static String nomeUsuario = "";
+    private static String nomeCaminho = "";
     private static String md5ArquivoCliente;
     private static String md5ArquivoServidor;
 
@@ -42,7 +43,6 @@ public class TrataMensagem {
                     System.out.println(verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor));
                     if (!verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor)) {
                         verificaExistenciaArquivo(nomeArquivo, nomeUsuario); //Exclui arquivo ruim
-                        avisaClienteArquivoRuim(nomeArquivo, enviaParaSocket); //FAZER
                     }
                     output.flush();
                     output.close();
@@ -53,27 +53,25 @@ public class TrataMensagem {
                 System.out.println("recebi o arquivo: " + nomeArquivo + "de tamanho: " + tamanhoArquivo);
                 break;
             case ("listaArquivos"):
-                nomeUsuario = (String) message.getArguments().get(0);
-                String[] nomesArquivo = recuperaListaArquivos(nomeUsuario , enviaParaSocket);
+                nomeCaminho = (String) message.getArguments().get(0);
+                String[] nomesArquivo = recuperaListaArquivos(nomeCaminho, enviaParaSocket);
                 enviarListaArquivos(nomesArquivo, enviaParaSocket);
                 System.out.println("Enviei lista arquivos.");
                 break;
             case ("download"):
                 String arquivoDownload = (String) message.getArguments().get(0);
-                nomeUsuario = (String) message.getArguments().get(1);
-                carregaArquivo(arquivoDownload, nomeUsuario);
-                enviarDadosArquivo(arquivoDownload, mybytearray.length, enviaParaSocket);
-                try {
-                    out.write(mybytearray, 0, mybytearray.length);
-                    out.flush();
-                } catch (IOException e) {
-                    System.out.println("Não foi possível enviar arquivo");
+                nomeCaminho = (String) message.getArguments().get(1);
+                if (carregaArquivo(arquivoDownload, nomeCaminho, enviaParaSocket)) {
+                    enviarDadosArquivo(arquivoDownload, mybytearray.length, enviaParaSocket);
+                    try {
+                        out.write(mybytearray, 0, mybytearray.length);
+                        out.flush();
+                    } catch (IOException e) {
+                        System.out.println("Não foi possível enviar arquivo");
+                    }
                 }
                 break;
         }
-    }
-
-    private static void avisaClienteArquivoRuim(String nomeArquivo, ObjectOutputStream enviaParaSocket) {
     }
 
     private static boolean verificaIntegridadeArquivo(String md5ArquivoCliente, String md5ArquivoServidor) {
@@ -93,27 +91,23 @@ public class TrataMensagem {
         }
     }
 
-    private static String[] recuperaListaArquivos(String nomeUsuario , ObjectOutputStream enviaParaSocket) {
-        File diretorio = new File(nomeUsuario);
+    private static String[] recuperaListaArquivos(String nomePasta, ObjectOutputStream enviaParaSocket) {
+        File diretorio = new File(nomePasta);
         File files[] = diretorio.listFiles();
-        try{ String[] nomesArquivo = new String[files.length];
-        for (int i = 0; i < files.length; i++) {
-            if(files[i].isDirectory()){
-                nomesArquivo[i] = files[i].getName() + "(PASTA)";
+        try {
+            String[] nomesArquivo = new String[files.length];
+            for (int i = 0; i < files.length; i++) {
+                nomesArquivo[i] = files[i].getName();
             }
-            else{
-            nomesArquivo[i] = files[i].getName();
-            }
-        }
-        return nomesArquivo;
-        }catch (Exception e){
-            enviaMensagemErro("Não foi possível ler os arquivos. Tem certeza que o usuário foi digitado corretamente?" , enviaParaSocket);
+            return nomesArquivo;
+        } catch (Exception e) {
+            enviaMensagemErro("Não foi possível ler os arquivos. Tem certeza que o usuário foi digitado corretamente?", enviaParaSocket);
         }
         return new String[0];
     }
 
 
-    private static void enviaMensagemErro(String mensagemErro, ObjectOutputStream enviaParaSocket){
+    private static void enviaMensagemErro(String mensagemErro, ObjectOutputStream enviaParaSocket) {
         //Escreve mensagem para o upload, contendo o nome do arquivo, tamanho e usuário para gravar a pasta.
         Mensagem mensagem = new Mensagem("erro", mensagemErro);
         try {
@@ -140,18 +134,26 @@ public class TrataMensagem {
         dir.mkdir();
     }
 
-    private static void carregaArquivo(String nomeArquivo, String nomeUsuário) {
+    private static boolean carregaArquivo(String nomeArquivo, String nomeUsuário, ObjectOutputStream enviaParaSocket) {
         try {
             //Send file
             File arquivo = new File(nomeUsuário + "/" + nomeArquivo);
+
+            if (arquivo.isDirectory()) {
+                enviaMensagemErro("Não é possível baixar uma pasta.", enviaParaSocket);
+                return false;
+            }
+
             mybytearray = new byte[(int) arquivo.length()];
 
             //Tenta ler arquivo
             FileInputStream fis = new FileInputStream(arquivo);
             BufferedInputStream bis = new BufferedInputStream(fis);
             bis.read(mybytearray, 0, mybytearray.length);
+            return true;
         } catch (IOException e) {
             System.out.println("Não foi possível carregar arquivo"); //Enviar erro ao cliente
+            return false;
         }
     }
 

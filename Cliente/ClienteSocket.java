@@ -65,12 +65,17 @@ public class ClienteSocket {
         }
 
         while (!exit) {
-            System.out.println("Deseja fazer download ou upload?");
-            String opcaoEscolhida = scan.nextLine();
+            System.out.println("O que deseja fazer?");
+            System.out.println("1- Upload");
+            System.out.println("2- Download");
+            System.out.println("3- Trocar usuário");
+            System.out.println("4- Sair");
 
+            String opcaoEscolhida = scan.nextLine();
             switch (opcaoEscolhida.toLowerCase()) {
-                case ("upload"):
-                    System.out.println("Insere o nome do arquivo ai meu bom:");
+                case ("1"):
+                    //Upload
+                    System.out.println("Por favor, insira o nome do arquivo:");
 
                     String caminhoArquivo = scan.nextLine();
                     String nomeArquivo = caminhoArquivo;
@@ -103,7 +108,8 @@ public class ClienteSocket {
                     out.flush();
                     enviaObjeto.flush();
                     break;
-                case ("download"):
+                case ("2"):
+//                    Download
                     diretorioDownload = System.getProperty("user.home");
                     System.out.println("Estes são os arquivos que voce colocou no servidor:");
 
@@ -122,7 +128,14 @@ public class ClienteSocket {
                         System.out.println("Por favor, digite um dos arquivos disponíveis: ");
                     }
                     break;
-                case ("exit"):
+                case ("3"):
+                    //Trocar nome do usuário
+                    System.out.println("Insira o novo usuário:");
+                    nomeUsuário = scan.nextLine();
+                    System.out.println("Agora está logado como: " + nomeUsuário);
+                    break;
+                case ("4"):
+                    //sair
                     exit = true;
                     System.out.println("Fechando conexão.");
                     break;
@@ -145,6 +158,9 @@ public class ClienteSocket {
             if (dadosArquivoDownload.getCommand().equals("dadosArquivo")) {
                 tamanhoArquivoDownload = (int) dadosArquivoDownload.getArguments().get(1);
                 md5ArquivoServidor = (String) dadosArquivoDownload.getArguments().get(2);
+            } else if (dadosArquivoDownload.getCommand().equals("erro")) {
+                System.out.println("Não é possível baixar arquivo, possivelmente ele é uma pasta. Por favor escolha outro");
+                return;
             }
         } catch (Exception e) {
             System.out.println("Não foi possível baixar arquivo");

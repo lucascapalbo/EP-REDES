@@ -69,12 +69,14 @@ public class ClienteSocket {
             System.out.println("1- Upload");
             System.out.println("2- Download");
             System.out.println("3- Trocar usuário");
-            System.out.println("4- Sair");
+            System.out.println("4- Deletar Arquivo");
+            System.out.println("5- Sair");
 
             String opcaoEscolhida = scan.nextLine();
             switch (opcaoEscolhida.toLowerCase()) {
                 case ("1"):
                     //Upload
+                    System.out.println("Para retornar ao menu, digite: voltar");
                     System.out.println("Por favor, insira o nome do arquivo:");
 
                     String caminhoArquivo = scan.nextLine();
@@ -111,6 +113,23 @@ public class ClienteSocket {
                 case ("2"):
 //                    Download
                     diretorioDownload = System.getProperty("user.home");
+                    System.out.println("Para retornar ao menu, digite: voltar");
+                    System.out.println("Por favor, digite o camino da pasta onde o arquivo deve ser baixado:");
+                    String diretorioEscolhido = scan.nextLine();
+
+                    if (diretorioEscolhido.toLowerCase().equals("voltar")) {
+                        break;
+                    }
+                    if (diretorioEscolhido != "") {
+                        File caminhoDownload = new File(diretorioEscolhido);
+                        if (caminhoDownload.exists()) {
+                            diretorioDownload = diretorioEscolhido;
+                            System.out.println("Caminho definido para: " + diretorioDownload);
+                        } else {
+                            System.out.println("Pasta não existe");
+                        }
+                    }
+
                     System.out.println("Estes são os arquivos que voce colocou no servidor:");
 
                     ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
@@ -118,14 +137,21 @@ public class ClienteSocket {
                     for (int i = 0; i < nomesArquivos.size(); i++) {
                         System.out.print(nomesArquivos.get(i) + " , ");
                     }
-                    //verifica o que ele quer fazer com os arquivos
-                    System.out.println("Qual destes arquivos deseja baixar?");
-                    String arquivoDownload = scan.nextLine();
-                    if (validaNomeArquivo(nomesArquivos, arquivoDownload)) {
-                        //Arquivo existe
-                        baixaArquivo(arquivoDownload, enviaObjeto, recebeObjeto);
-                    } else {
-                        System.out.println("Por favor, digite um dos arquivos disponíveis: ");
+                    boolean arquivoSelecionado = false;
+                    while (!arquivoSelecionado) {
+                        //verifica o que ele quer fazer com os arquivos
+                        System.out.println("Qual destes arquivos deseja baixar?");
+                        String arquivoDownload = scan.nextLine();
+                        if (arquivoDownload.toLowerCase().equals("voltar")) {
+                            break;
+                        }
+                        if (validaNomeArquivo(nomesArquivos, arquivoDownload)) {
+                            //Arquivo existe
+                            baixaArquivo(arquivoDownload, enviaObjeto, recebeObjeto);
+                            arquivoSelecionado = true;
+                        } else {
+                            System.out.println("Por favor, digite um dos arquivos disponíveis: ");
+                        }
                     }
                     break;
                 case ("3"):
@@ -134,18 +160,48 @@ public class ClienteSocket {
                     nomeUsuário = scan.nextLine();
                     System.out.println("Agora está logado como: " + nomeUsuário);
                     break;
+
                 case ("4"):
+                    //Deletar Arquivo
+                    System.out.println("Para retornar ao menu, digite: voltar");
+                    System.out.println("Estes são os arquivos que voce colocou no servidor:");
+
+                    ArrayList arquivosDelecao = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
+                    if (arquivosDelecao == null) break;
+                    for (int i = 0; i < arquivosDelecao.size(); i++) {
+                        System.out.print(arquivosDelecao.get(i) + " , ");
+                    }
+                    //verifica o que ele quer fazer com os arquivos
+                    System.out.println("Qual destes arquivos deseja baixar?");
+                    Boolean arquivoDelecaoSelecionado = false;
+                    while (!arquivoDelecaoSelecionado) {
+                        String arquivoParaDeletar = scan.nextLine();
+                        if (arquivoParaDeletar.toLowerCase().equals("voltar")) {
+                            break;
+                        }
+                        if (validaNomeArquivo(arquivosDelecao, arquivoParaDeletar)) {
+                            //Arquivo existe
+                            deletarArquivo(arquivoParaDeletar, enviaObjeto, recebeObjeto);
+                            arquivoDelecaoSelecionado = true;
+                        } else {
+                            System.out.println("Por favor, digite um dos arquivos disponíveis: ");
+                        }
+                    }
+                    break;
+                case ("5"):
                     //sair
                     exit = true;
                     System.out.println("Fechando conexão.");
                     break;
                 default:
                     System.out.println("Por favor, entre um comando válido.");
-
             }
         }
         //Closing socket
         sock.close();
+    }
+
+    private static void deletarArquivo(String arquivoParaDeletar, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
     }
 
     private static void baixaArquivo(String arquivoDownload, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
@@ -178,21 +234,25 @@ public class ClienteSocket {
             int controlador = 0;
             pb = new ProgressBar("Baixando", tamanhoArquivoDownload);
             while ((count = in.read(buffer, 0, (tamanhoArquivoDownload - controlador))) > 0) {
-                //Arrumar loop infinito
                 output.write(buffer, 0, count);
                 if (count >= 0) controlador += count;
                 pb.stepBy(count);
             }
             String md5ArquivoCliente = criaMD5(diretorioDownload + "/" + arquivoDownload);
-            verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor);
+
+            if (verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor)) {
+                //Arquivo ruim, vou deletar
+                File deletarArquivo = new File(diretorioDownload + "/" + arquivoDownload);
+                if (deletarArquivo.exists()) {
+                    deletarArquivo.delete();
+                    System.out.println("Deletando o arquivo pois estava corrompido.");
+                }
+            }
             pb.close();
             System.out.println();
             output.close();
             return;
-        } catch (
-                Exception e)
-
-        {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -250,12 +310,14 @@ public class ClienteSocket {
             Path diretorio = Paths.get(nomeArquivo);
             nomeExatoArquivo = diretorio.getFileName().toString();
             File arquivo = new File(nomeArquivo);
-            mybytearray = new byte[(int) arquivo.length()];
-
-            //Tenta ler arquivo
-            FileInputStream fis = new FileInputStream(arquivo);
-            BufferedInputStream bis = new BufferedInputStream(fis);
-            bis.read(mybytearray, 0, mybytearray.length);
+            if (arquivo.isDirectory()) {
+            } else {
+                mybytearray = new byte[(int) arquivo.length()];
+                //Tenta ler arquivo
+                FileInputStream fis = new FileInputStream(arquivo);
+                BufferedInputStream bis = new BufferedInputStream(fis);
+                bis.read(mybytearray, 0, mybytearray.length);
+            }
         } catch (IOException e) {
             System.out.println("Tem certeza que inseriu o nome do arquivo correto? Insira-o novamente:");
             nomeArquivo = scan.nextLine();

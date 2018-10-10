@@ -29,40 +29,19 @@ public class ClienteSocket {
     private static ObjectInputStream recebeObjeto;
     private static ProgressBar pb;
     private static String md5ArquivoServidor;
+    private static ArrayList nomesArquivos;
+    private static ArrayList arquivosDelecao;
+    private static boolean connected = false;
+
 
     public static void main(String[] args) throws IOException {
         scan = new Scanner(System.in);
         System.out.println("Bem vindo ao nosso EP! Insira seu nome: ");
         nomeUsuário = scan.nextLine();
 
-        boolean connected = false;
-        int count = 0;
         System.out.println("Tentando criar conexão ao servidor.");
-        while (!connected) {
-            try {
-                String ip = "localhost";
-//                String ip = "34.200.162.253";
-                int porta = 13267;
-//                int porta = 53453;
-                sock = new Socket(ip, porta);
-                System.out.println("Conexão criada!");
+        criaConexao();
 
-                out = sock.getOutputStream(); //cria conexão de envio
-                in = sock.getInputStream(); //cria conexão de recebimento;
-
-                enviaObjeto = new ObjectOutputStream(out);
-                recebeObjeto = new ObjectInputStream(in);
-
-                connected = true;
-
-            } catch (SocketException e) {
-                if (count == 0) {
-                    System.out.println("Ops, o servidor não está online.");
-                    System.out.println("Tentando reconexao");
-                    count++;
-                }
-            }
-        }
 
         while (!exit) {
             System.out.println("O que deseja fazer?");
@@ -105,6 +84,7 @@ public class ClienteSocket {
                         pb.close();
                     } catch (SocketException e) {
                         System.out.println("Oh oh, conexão caiu.");
+                        pb.close();
                     }
                     out.flush();
                     enviaObjeto.flush();
@@ -137,7 +117,7 @@ public class ClienteSocket {
                     }
                     System.out.println("Estes são os arquivos que voce colocou no servidor:");
 
-                    ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
+                    nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
                     if (nomesArquivos == null) break;
                     for (int i = 0; i < nomesArquivos.size(); i++) {
                         System.out.print(nomesArquivos.get(i) + " , ");
@@ -171,7 +151,7 @@ public class ClienteSocket {
                     System.out.println("Para retornar ao menu, digite: voltar");
                     System.out.println("Estes são os arquivos que voce colocou no servidor:");
 
-                    ArrayList arquivosDelecao = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
+                    arquivosDelecao = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);
                     if (arquivosDelecao == null) break;
                     for (int i = 0; i < arquivosDelecao.size(); i++) {
                         System.out.print(arquivosDelecao.get(i) + " , ");
@@ -206,11 +186,35 @@ public class ClienteSocket {
         sock.close();
     }
 
+    private static void criaConexao() {
+        int count = 0;
+        while (!connected) {
+            try {
+//                String ip = "localhost";
+                String ip = "34.200.162.253";
+//                int porta = 13267;
+                int porta = 53453;
+                sock = new Socket(ip, porta);
+                System.out.println("Conexão criada!");
+
+                out = sock.getOutputStream(); //cria conexão de envio
+                in = sock.getInputStream(); //cria conexão de recebimento;
+
+                enviaObjeto = new ObjectOutputStream(out);
+                recebeObjeto = new ObjectInputStream(in);
+                connected = true;
+            } catch (Exception e) {
+                if (count == 0) {
+                    System.out.println("Ops, o servidor não está online.");
+                    System.out.println("Tentando reconexao");
+                    count++;
+                }
+            }
+        }
+    }
+
     private static void deletarArquivo(String arquivoParaDeletar, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
-
         Mensagem mensagem = new Mensagem("deletar", arquivoParaDeletar, nomeUsuário);
-
-
     }
 
     private static void baixaArquivo(String arquivoDownload, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto, String nomeDiretorio) {
@@ -229,6 +233,11 @@ public class ClienteSocket {
             }
         } catch (Exception e) {
             System.out.println("Não foi possível baixar arquivo");
+
+            if (e instanceof SocketException) {
+                connected = false;
+                criaConexao();
+            }
         }
         if (verificaExistenciaArquivo(arquivoDownload, diretorioDownload)) { //Verifica se arquivo já existe.
             System.out.println("Sobrescrevendo-o");
@@ -249,7 +258,7 @@ public class ClienteSocket {
             }
             String md5ArquivoCliente = criaMD5(diretorioDownload + "/" + arquivoDownload);
 
-            if (verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor)) {
+            if (!verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor)) {
                 //Arquivo ruim, vou deletar
                 File deletarArquivo = new File(diretorioDownload + "/" + arquivoDownload);
                 if (deletarArquivo.exists()) {
@@ -262,7 +271,12 @@ public class ClienteSocket {
             output.close();
             return;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Não foi possível baixar o arquivo.");
+            pb.close();
+            if (e instanceof SocketException) {
+                connected = false;
+                criaConexao();
+            }
         }
 
     }
@@ -296,7 +310,11 @@ public class ClienteSocket {
                 return null;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Não foi possível recuperar lista de arquivos.");
+            if (e instanceof SocketException || e instanceof EOFException) {
+                connected = false;
+                criaConexao();
+            }
         }
         return null;
     }
@@ -309,6 +327,10 @@ public class ClienteSocket {
             dos.flush();
         } catch (IOException e) {
             System.out.println("Não foi possível enviar dados do arquivo");
+            if (e instanceof SocketException) {
+                connected = false;
+                criaConexao();
+            }
         }
     }
 
@@ -320,6 +342,7 @@ public class ClienteSocket {
             nomeExatoArquivo = diretorio.getFileName().toString();
             File arquivo = new File(nomeArquivo);
             if (arquivo.isDirectory()) {
+                return nomeExatoArquivo;
             } else {
                 mybytearray = new byte[(int) arquivo.length()];
                 //Tenta ler arquivo

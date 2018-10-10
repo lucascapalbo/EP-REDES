@@ -59,6 +59,7 @@ public class TrataMensagem {
             case ("download"):
                 String arquivoDownload = (String) message.getArguments().get(0);
                 nomeCaminho = (String) message.getArguments().get(1);
+
                 if (carregaArquivo(arquivoDownload, nomeCaminho, enviaParaSocket)) {
                     enviarDadosArquivo(arquivoDownload, mybytearray.length, enviaParaSocket);
                     try {
@@ -157,7 +158,7 @@ public class TrataMensagem {
 
     private static void enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, ObjectOutputStream dos) {
         //Escreve mensagem para o upload, contendo o nome do arquivo, tamanho e usuário para gravar a pasta.
-        Mensagem mensagem = new Mensagem("dadosArquivo", nomeArquivo, tamanhoArquivo, criaMD5((nomeUsuario + "/" + nomeArquivo)));
+        Mensagem mensagem = new Mensagem("dadosArquivo", nomeArquivo, tamanhoArquivo, criaMD5((nomeCaminho + "/" + nomeArquivo)));
         try {
             dos.writeObject(mensagem);
             dos.flush();

@@ -41,9 +41,9 @@ public class ClienteSocket {
         while (!connected) {
             try {
                 String ip = "localhost";
-//            String ip = "52.207.182.18";
+//                String ip = "34.200.162.253";
                 int porta = 13267;
-//            int porta = 44572;
+//                int porta = 53453;
                 sock = new Socket(ip, porta);
                 System.out.println("Conexão criada!");
 
@@ -115,7 +115,6 @@ public class ClienteSocket {
                     System.out.println("Para retornar ao menu, digite: voltar");
                     System.out.println("Por favor, digite o camino da pasta onde o arquivo deve ser baixado:");
                     String diretorioEscolhido = scan.nextLine();
-
                     Boolean diretorioExiste = false;
                     while (!diretorioExiste) {
                         if (diretorioEscolhido.toLowerCase().equals("voltar")) {
@@ -153,7 +152,7 @@ public class ClienteSocket {
                         }
                         if (validaNomeArquivo(nomesArquivos, arquivoDownload)) {
                             //Arquivo existe
-                            baixaArquivo(arquivoDownload, enviaObjeto, recebeObjeto);
+                            baixaArquivo(arquivoDownload, enviaObjeto, recebeObjeto, nomeUsuário);
                             arquivoSelecionado = true;
                         } else {
                             System.out.println("Por favor, digite um dos arquivos disponíveis: ");
@@ -208,10 +207,14 @@ public class ClienteSocket {
     }
 
     private static void deletarArquivo(String arquivoParaDeletar, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
+
+        Mensagem mensagem = new Mensagem("deletar", arquivoParaDeletar, nomeUsuário);
+
+
     }
 
-    private static void baixaArquivo(String arquivoDownload, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
-        Mensagem mensagem = new Mensagem("download", arquivoDownload, nomeUsuário); //Pede arquivo para o servidor
+    private static void baixaArquivo(String arquivoDownload, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto, String nomeDiretorio) {
+        Mensagem mensagem = new Mensagem("download", arquivoDownload, nomeDiretorio); //Pede arquivo para o servidor
         int tamanhoArquivoDownload = 0;
         try {
             enviaObjeto.writeObject(mensagem);
@@ -278,8 +281,8 @@ public class ClienteSocket {
         return false;
     }
 
-    private static ArrayList<String> recuperaListaArquivos(String nomeUsuário, ObjectOutputStream enviaObjeto, ObjectInputStream recebeLista) {
-        Mensagem mensagem = new Mensagem("listaArquivos", nomeUsuário); //Recupera lista de arquivos
+    private static ArrayList<String> recuperaListaArquivos(String nomeDiretorio, ObjectOutputStream enviaObjeto, ObjectInputStream recebeLista) {
+        Mensagem mensagem = new Mensagem("listaArquivos", nomeDiretorio); //Recupera lista de arquivos
         try {
             enviaObjeto.writeObject(mensagem);
             enviaObjeto.flush();

@@ -100,7 +100,6 @@ public class ClienteSocket {
                             }
                             out.write(mybytearray, bytesLidos, buffer);
                             bytesLidos += buffer;
-                            //System.out.print(progresso(bytesLidos, mybytearray.length) + " ");
                             pb.stepBy(buffer);
                         }
                         pb.close();
@@ -117,19 +116,26 @@ public class ClienteSocket {
                     System.out.println("Por favor, digite o camino da pasta onde o arquivo deve ser baixado:");
                     String diretorioEscolhido = scan.nextLine();
 
+                    Boolean diretorioExiste = false;
+                    while (!diretorioExiste) {
+                        if (diretorioEscolhido.toLowerCase().equals("voltar")) {
+                            break;
+                        }
+                        if (diretorioEscolhido != "") {
+                            File caminhoDownload = new File(diretorioEscolhido);
+                            if (caminhoDownload.exists() && caminhoDownload.isDirectory()) {
+                                diretorioDownload = diretorioEscolhido;
+                                System.out.println("Caminho definido para: " + diretorioDownload);
+                                diretorioExiste = true;
+                            } else {
+                                System.out.println("Pasta não existe, por favor digite outra pasta:");
+                                diretorioEscolhido = scan.nextLine();
+                            }
+                        }
+                    }
                     if (diretorioEscolhido.toLowerCase().equals("voltar")) {
                         break;
                     }
-                    if (diretorioEscolhido != "") {
-                        File caminhoDownload = new File(diretorioEscolhido);
-                        if (caminhoDownload.exists()) {
-                            diretorioDownload = diretorioEscolhido;
-                            System.out.println("Caminho definido para: " + diretorioDownload);
-                        } else {
-                            System.out.println("Pasta não existe");
-                        }
-                    }
-
                     System.out.println("Estes são os arquivos que voce colocou no servidor:");
 
                     ArrayList nomesArquivos = recuperaListaArquivos(nomeUsuário, enviaObjeto, recebeObjeto);

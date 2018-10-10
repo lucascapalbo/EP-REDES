@@ -26,7 +26,6 @@ public class TrataMensagem {
                 md5ArquivoCliente = (String) message.getArguments().get(3); //Recupera md5 Arquivo para comparar.
                 verificaExistenciaPasta(nomeUsuario);
                 verificaExistenciaArquivo(nomeArquivo, nomeUsuario);
-                System.out.println("Vo tenta faze com esse bosta: " + nomeArquivo);
                 try {
                     output = new FileOutputStream(nomeUsuario + "/" + nomeArquivo);
                     byte[] buffer = new byte[8192];
@@ -49,7 +48,6 @@ public class TrataMensagem {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                // Closing the FileOutputStream handle
                 System.out.println("recebi o arquivo: " + nomeArquivo + "de tamanho: " + tamanhoArquivo);
                 break;
             case ("listaArquivos"):

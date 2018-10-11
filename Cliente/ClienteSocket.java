@@ -62,6 +62,7 @@ public class ClienteSocket {
                     String nomeArquivo = caminhoArquivo;
 
                     nomeArquivo = carregaArquivo(nomeArquivo);
+                    if (nomeArquivo == "") break;
                     System.out.println("Enviando o arquivo : " + nomeArquivo);
 
                     //Sending file name and file size to the server
@@ -84,6 +85,13 @@ public class ClienteSocket {
                         pb.close();
                     } catch (SocketException e) {
                         System.out.println("Oh oh, conexão caiu.");
+                        if (e instanceof SocketException) {
+                            out.flush();
+                            enviaObjeto.flush();
+                            connected = false;
+                            criaConexao();
+                            break;
+                        }
                         pb.close();
                     }
                     out.flush();
@@ -190,10 +198,10 @@ public class ClienteSocket {
         int count = 0;
         while (!connected) {
             try {
-//                String ip = "localhost";
-                String ip = "34.200.162.253";
-//                int porta = 13267;
-                int porta = 53453;
+                String ip = "localhost";
+//                String ip = "34.200.162.253";
+                int porta = 13267;
+//                int porta = 53453;
                 sock = new Socket(ip, porta);
                 System.out.println("Conexão criada!");
 
@@ -342,7 +350,9 @@ public class ClienteSocket {
             nomeExatoArquivo = diretorio.getFileName().toString();
             File arquivo = new File(nomeArquivo);
             if (arquivo.isDirectory()) {
-                return nomeExatoArquivo;
+                System.out.println("Não é possível enviar uma pasta, por favor insira outro arquivo.");
+                nomeArquivo = scan.nextLine();
+                carregaArquivo(nomeArquivo);
             } else {
                 mybytearray = new byte[(int) arquivo.length()];
                 //Tenta ler arquivo

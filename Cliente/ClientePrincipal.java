@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 
-public class ClienteSocket {
+public class ClientePrincipal {
     private static Socket sock;
     private static OutputStream out;
     private static InputStream in;
@@ -39,6 +39,8 @@ public class ClienteSocket {
         System.out.println("Bem vindo ao nosso EP! Insira seu nome: ");
         nomeUsuário = scan.nextLine();
 
+        nomeUsuário = nomeUsuário.toLowerCase();
+
         System.out.println("Tentando criar conexão ao servidor.");
         criaConexao();
 
@@ -59,14 +61,19 @@ public class ClienteSocket {
                     System.out.println("Por favor, insira o nome do arquivo:");
 
                     String caminhoArquivo = scan.nextLine();
+                    if (caminhoArquivo.toLowerCase().equals("voltar")) {
+                        break;
+                    }
                     String nomeArquivo = caminhoArquivo;
 
                     nomeArquivo = carregaArquivo(nomeArquivo);
                     if (nomeArquivo == "") break;
                     System.out.println("Enviando o arquivo : " + nomeArquivo);
 
-                    //Sending file name and file size to the server
-                    enviarDadosArquivo(nomeArquivo, mybytearray.length, nomeUsuário, enviaObjeto, caminhoArquivo); //Envia dados do arquivo ao servidor
+                    //Envia dados do arquivo ao servidor
+                    if (!enviarDadosArquivo(nomeArquivo, mybytearray.length, nomeUsuário, enviaObjeto, caminhoArquivo)) {
+                        break;
+                    }
                     System.out.println(mybytearray.length);
                     enviaObjeto.flush();
                     pb = new ProgressBar("Enviando", mybytearray.length);
@@ -90,6 +97,7 @@ public class ClienteSocket {
                             enviaObjeto.flush();
                             connected = false;
                             criaConexao();
+                            pb.close();
                             break;
                         }
                         pb.close();
@@ -165,7 +173,7 @@ public class ClienteSocket {
                         System.out.print(arquivosDelecao.get(i) + " , ");
                     }
                     //verifica o que ele quer fazer com os arquivos
-                    System.out.println("Qual destes arquivos deseja baixar?");
+                    System.out.println("Qual destes arquivos deseja deletar?");
                     Boolean arquivoDelecaoSelecionado = false;
                     while (!arquivoDelecaoSelecionado) {
                         String arquivoParaDeletar = scan.nextLine();
@@ -199,9 +207,7 @@ public class ClienteSocket {
         while (!connected) {
             try {
                 String ip = "localhost";
-//                String ip = "34.200.162.253";
-                int porta = 13267;
-//                int porta = 53453;
+                int porta = 57291;
                 sock = new Socket(ip, porta);
                 System.out.println("Conexão criada!");
 
@@ -223,6 +229,22 @@ public class ClienteSocket {
 
     private static void deletarArquivo(String arquivoParaDeletar, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto) {
         Mensagem mensagem = new Mensagem("deletar", arquivoParaDeletar, nomeUsuário);
+        try {
+            enviaObjeto.writeObject(mensagem);
+            enviaObjeto.flush();
+            Mensagem resultadoDelecao = (Mensagem) recebeObjeto.readObject();
+            if (resultadoDelecao.getCommand().equals("deletado")) {
+                System.out.println(resultadoDelecao.getArguments().get(0));
+            } else if (resultadoDelecao.getCommand().equals("erro")) {
+                System.out.println(resultadoDelecao.getArguments().get(0));
+            }
+        } catch (Exception e) {
+            System.out.println("Não foi possível deletar arquivo");
+            if (e instanceof SocketException) {
+                connected = false;
+                criaConexao();
+            }
+        }
     }
 
     private static void baixaArquivo(String arquivoDownload, ObjectOutputStream enviaObjeto, ObjectInputStream recebeObjeto, String nomeDiretorio) {
@@ -236,7 +258,7 @@ public class ClienteSocket {
                 tamanhoArquivoDownload = (int) dadosArquivoDownload.getArguments().get(1);
                 md5ArquivoServidor = (String) dadosArquivoDownload.getArguments().get(2);
             } else if (dadosArquivoDownload.getCommand().equals("erro")) {
-                System.out.println("Não é possível baixar arquivo, possivelmente ele é uma pasta. Por favor escolha outro");
+                System.out.println(dadosArquivoDownload.getArguments().get(0));
                 return;
             }
         } catch (Exception e) {
@@ -311,6 +333,10 @@ public class ClienteSocket {
             Mensagem listaArquivos = (Mensagem) recebeLista.readObject(); //recupera lista do servidor
             if (listaArquivos.getCommand().equals("listaArquivos")) {
                 ArrayList<String> nomesArquivos = (ArrayList) listaArquivos.getArguments();
+                if (nomesArquivos == null || nomesArquivos.size() == 0) {
+                    System.out.println("Não foi possível ler os arquivos. Pasta vazia ou inexistente?");
+                    return null;
+                }
                 return nomesArquivos;
             } else if (listaArquivos.getCommand().equals("erro")) {
                 String mensagemErro = (String) listaArquivos.getArguments().get(0);
@@ -327,7 +353,7 @@ public class ClienteSocket {
         return null;
     }
 
-    private static void enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, String nomeUsuário, ObjectOutputStream dos, String caminhoArquivo) {
+    private static boolean enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, String nomeUsuário, ObjectOutputStream dos, String caminhoArquivo) {
         //Escreve mensagem para o upload, contendo o nome do arquivo, tamanho e usuário para gravar a pasta.
         Mensagem mensagem = new Mensagem("upload", nomeArquivo, tamanhoArquivo, nomeUsuário, criaMD5(caminhoArquivo));
         try {
@@ -338,8 +364,10 @@ public class ClienteSocket {
             if (e instanceof SocketException) {
                 connected = false;
                 criaConexao();
+                return false;
             }
         }
+        return true;
     }
 
     private static String carregaArquivo(String nomeArquivo) {

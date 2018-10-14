@@ -3,18 +3,16 @@ package Servidor;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class Server implements Runnable {
+public class Server {
     private static ServerSocket serverSocket;
 
-    @Override
-    public void run() {
+    public static void main(String[] args) {
         try {
-            serverSocket = new ServerSocket(13267);
-
+            serverSocket = new ServerSocket(57291);
             while (true) {
-                System.out.println("To on meu bem!");
+                System.out.println("Servidor online, esperando clientes!");
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Clientela chego");
+                System.out.println("Cliente conectou");
                 Thread thread = new Thread(new NovaConexao(clientSocket));
                 thread.start();
             }

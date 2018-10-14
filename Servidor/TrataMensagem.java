@@ -25,7 +25,7 @@ public class TrataMensagem {
                 nomeUsuario = (String) message.getArguments().get(2); //Recupera nome para pasta.
                 md5ArquivoCliente = (String) message.getArguments().get(3); //Recupera md5 Arquivo para comparar.
                 verificaExistenciaPasta(nomeUsuario);
-                verificaExistenciaArquivo(nomeArquivo, nomeUsuario);
+                verificaExistenciaArquivo(nomeArquivo, nomeUsuario, enviaParaSocket);
                 try {
                     output = new FileOutputStream(nomeUsuario + "/" + nomeArquivo);
                     byte[] buffer = new byte[8192];
@@ -41,7 +41,7 @@ public class TrataMensagem {
                     System.out.println("MD5 SERVER" + md5ArquivoServidor);
                     System.out.println(verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor));
                     if (!verificaIntegridadeArquivo(md5ArquivoCliente, md5ArquivoServidor)) {
-                        verificaExistenciaArquivo(nomeArquivo, nomeUsuario); //Exclui arquivo ruim
+                        verificaExistenciaArquivo(nomeArquivo, nomeUsuario, enviaParaSocket); //Exclui arquivo ruim
                     }
                     output.flush();
                     output.close();
@@ -61,7 +61,9 @@ public class TrataMensagem {
                 nomeCaminho = (String) message.getArguments().get(1);
 
                 if (carregaArquivo(arquivoDownload, nomeCaminho, enviaParaSocket)) {
-                    enviarDadosArquivo(arquivoDownload, mybytearray.length, enviaParaSocket);
+                    if (!enviarDadosArquivo(arquivoDownload, mybytearray.length, enviaParaSocket)) {
+                        break;
+                    }
                     try {
                         out.write(mybytearray, 0, mybytearray.length);
                         out.flush();
@@ -70,6 +72,33 @@ public class TrataMensagem {
                     }
                 }
                 break;
+            case ("deletar"):
+                String arquivoDeletar = (String) message.getArguments().get(0);
+                nomeCaminho = (String) message.getArguments().get(1);
+                if (verificaExistenciaPasta(nomeCaminho) && verificaExistenciaArquivo(arquivoDeletar, nomeCaminho, enviaParaSocket)) {
+                    //Arquivo existe, posso deleta-lo.
+                    deletaArquivo(arquivoDeletar, nomeCaminho, enviaParaSocket);
+                }
+                break;
+        }
+    }
+
+    private static boolean deletaArquivo(String arquivoDeletar, String nomeCaminho, ObjectOutputStream enviaParaSocket) {
+        File delecao = new File(nomeCaminho + "/" + arquivoDeletar);
+        if (delecao.isDirectory()) {
+            enviaMensagemErro("Não é possível deletar uma pasta", enviaParaSocket);
+            return false;
+        } else {
+            delecao.delete();
+            Mensagem mensagem = new Mensagem("deletado", "O arquivo foi deletado com sucesso.");
+            System.out.println("Arquivo deletado.");
+            try {
+                enviaParaSocket.writeObject(mensagem);
+                enviaParaSocket.flush();
+            } catch (IOException e) {
+                System.out.println("Não foi possível enviar mensagem para cliente.");
+            }
+            return true;
         }
     }
 
@@ -95,12 +124,16 @@ public class TrataMensagem {
         File files[] = diretorio.listFiles();
         try {
             String[] nomesArquivo = new String[files.length];
+            int j = 0;
             for (int i = 0; i < files.length; i++) {
-                nomesArquivo[i] = files[i].getName();
+                if (!files[i].getName().equals(".DS_Store") && !files[i].getName().equals("desktop.ini")) {
+                    nomesArquivo[j] = files[i].getName();
+                    j++;
+                }
             }
             return nomesArquivo;
         } catch (Exception e) {
-            enviaMensagemErro("Não foi possível ler os arquivos. Tem certeza que o usuário foi digitado corretamente?", enviaParaSocket);
+            enviaMensagemErro("Não foi possível ler os arquivos. Pasta vazia ou inexistente?", enviaParaSocket);
         }
         return new String[0];
     }
@@ -117,20 +150,25 @@ public class TrataMensagem {
         }
     }
 
-    private static void verificaExistenciaArquivo(String nomeArquivo, String nomePasta) {
+    private static boolean verificaExistenciaArquivo(String nomeArquivo, String nomePasta, ObjectOutputStream enviaParaSocket) {
         File file = new File(nomePasta + "/" + nomeArquivo); //Concatena arquivo e pasta
         if (file.exists()) {
             System.out.println("Arquivo já existe.");
             file.delete();
+            return true;
+        } else {
+            enviaMensagemErro("Arquivo não existe.", enviaParaSocket);
         }
+        return false;
     }
 
-    private static void verificaExistenciaPasta(String nomePasta) {
+    private static boolean verificaExistenciaPasta(String nomePasta) {
         File dir = new File(nomePasta);
         if (dir.exists()) {
             System.out.println("Pasta já existe.");
         }
         dir.mkdir();
+        return true;
     }
 
     private static boolean carregaArquivo(String nomeArquivo, String nomeUsuário, ObjectOutputStream enviaParaSocket) {
@@ -156,7 +194,7 @@ public class TrataMensagem {
         }
     }
 
-    private static void enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, ObjectOutputStream dos) {
+    private static boolean enviarDadosArquivo(String nomeArquivo, int tamanhoArquivo, ObjectOutputStream dos) {
         //Escreve mensagem para o upload, contendo o nome do arquivo, tamanho e usuário para gravar a pasta.
         Mensagem mensagem = new Mensagem("dadosArquivo", nomeArquivo, tamanhoArquivo, criaMD5((nomeCaminho + "/" + nomeArquivo)));
         try {
@@ -164,7 +202,9 @@ public class TrataMensagem {
             dos.flush();
         } catch (IOException e) {
             System.out.println("Não foi possível enviar dados do arquivo");
+            return false;
         }
+        return true;
     }
 
     private static String criaMD5(String nomeArquivo) {

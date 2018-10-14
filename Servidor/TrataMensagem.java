@@ -156,8 +156,6 @@ public class TrataMensagem {
             System.out.println("Arquivo já existe.");
             file.delete();
             return true;
-        } else {
-            enviaMensagemErro("Arquivo não existe.", enviaParaSocket);
         }
         return false;
     }

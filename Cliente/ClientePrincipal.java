@@ -391,6 +391,9 @@ public class ClientePrincipal {
         } catch (IOException e) {
             System.out.println("Tem certeza que inseriu o nome do arquivo correto? Insira-o novamente:");
             nomeArquivo = scan.nextLine();
+            if (nomeArquivo.toLowerCase().equals("voltar")) {
+                return "";
+            }
             carregaArquivo(nomeArquivo);
         }
         return nomeExatoArquivo;

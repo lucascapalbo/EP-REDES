@@ -2,12 +2,11 @@ package Servidor;
 
 import comum.Mensagem;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.*;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
-
 
 public class TrataMensagem {
     private static byte[] mybytearray;
@@ -211,11 +210,12 @@ public class TrataMensagem {
             MessageDigest md = MessageDigest.getInstance("MD5");
             md.update(Files.readAllBytes(Paths.get(nomeArquivo)));
             byte[] digest = md.digest();
-            md5Criada = DatatypeConverter.printHexBinary(digest);
+            BigInteger hash = new BigInteger(1, digest);
+            md5Criada = hash.toString(16);
             return md5Criada;
         } catch (Exception e) {
             System.out.println("Não foi possível criar MD5 do arquivo.");
-            return md5Criada; //Retorna nada
+            return md5Criada; //Retorna nada        }
         }
     }
 }
